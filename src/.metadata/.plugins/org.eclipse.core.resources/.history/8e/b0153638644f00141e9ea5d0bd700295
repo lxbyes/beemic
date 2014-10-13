@@ -1,0 +1,20 @@
+package com.leckie.gui;
+
+import javax.swing.JFrame;
+
+/**
+ * 
+ * @author Leckie
+ * @date 2014-10-9
+ */
+public class MainJFrame extends JFrame {
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

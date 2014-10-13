@@ -1,0 +1,14 @@
+#Fat Jar Configuration File
+#Thu Oct 09 14:26:23 CST 2014
+onejar.license.required=false
+manifest.classpath=
+manifest.removesigners=false
+onejar.checkbox=false
+jarname=beeplayer.jar
+manifest.mergeall=true
+manifest.mainclass=com.beemic.main.ConnectionManager
+manifest.file=<createnew>
+jarname.isextern=false
+onejar.expand=
+excludes=
+includes=

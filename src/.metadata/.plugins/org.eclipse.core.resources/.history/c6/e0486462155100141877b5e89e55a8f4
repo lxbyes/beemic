@@ -1,0 +1,17 @@
+package com.beemic.main;
+
+/**
+ * 程序入口<br>
+ * @author Leckie
+ * @date 2014-10-11
+ */
+public class BeePlayer {
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		ConnectionManager cm = new ConnectionManager();
+	}
+
+}

@@ -1,0 +1,232 @@
+package com.beemic.main;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.Arrays;
+import java.util.Hashtable;
+
+import com.beemic.common.Message;
+import com.beemic.common.Session;
+import com.beemic.gui.ConnectJFrame;
+import com.beemic.gui.DrawWavePanel;
+import com.beemic.thread.AudioStreamReciver;
+import com.beemic.util.IpResolverUtil;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+
+/**
+ * <p>程序入口
+ * <p>连接信息管理
+ * @author Kevin
+ * @version 2014-04-02
+ */
+public class ConnectionManager {
+	
+	private final static int QR_CODE_SIZE = 250;//二维码的边长
+	
+	private final static String AUTH_CODE = "AUTH_CODE";//放在二维码信息头部，用以标识是本程序生成的二维码
+	
+	private final static int MESSAGE_BUFFER_LENGTH = 64;//消息不能超过64byte
+	
+	private Socket socket;//连接的Socket
+	
+	private static ConnectJFrame frame = null;
+	
+	private static DrawWavePanel frame2 = null;
+	
+	/**
+	 * 程序入口
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		ServerSocket ss = null;
+		Session session = null;//唯一的会话信息的引用
+		ConnectionManager conn = new ConnectionManager();
+		try {
+			ss = new ServerSocket(60637, 10, IpResolverUtil.getPreferedLocalHost());
+			//ss = new ServerSocket(60637, 10, InetAddress.getLocalHost());//使用本地可用端口来监听服务
+		} catch (IOException e) {
+			System.err.println("创建ServerSocket失败！");
+			e.printStackTrace();
+			System.exit(0);
+		}
+		
+		StringBuffer sb = new StringBuffer(AUTH_CODE);
+		
+		sb.append("," + ss.getInetAddress().getHostAddress());//IP地址
+		sb.append("," + ss.getLocalPort());//端口号
+		
+		frame = new ConnectJFrame("请扫描下方的二维码来获得连接：", makeQRCode(sb.toString()));
+		frame.setVisible(true);
+		System.out.println(sb.toString());
+		
+		try {
+			conn.setSocket(ss.accept());
+			System.out.println("连接成功！");
+		} catch (IOException e) {
+			System.err.println("连接失败！");
+			e.printStackTrace();
+		}
+		
+		
+		session = Session.getSession();//获得会话信息
+		session.setAlive(true);
+		session.setIp(conn.getSocket().getInetAddress().getHostAddress());
+		session.setTcpPort(conn.getSocket().getPort());
+		
+		//conn.sendMessage(Message.CONNECT_CONFIRM);//发送确认消息
+		conn.receiveMessage();//监听消息
+		
+		try {
+			ss.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * 发送消息
+	 */
+	public void sendMessage(String message) {
+		new Thread(new SendThread(message)).start();
+	}
+	
+	/**
+	 * 接受消息
+	 */
+	public void receiveMessage() {
+		new Thread(new ReceiveThread()).start();
+	}
+	
+	/**
+	 * 发送消息的线程定义
+	 */
+	class SendThread implements Runnable {
+
+		String message = "";
+		SendThread(String message) {
+			this.message = message;
+		}
+		
+		@Override
+		public void run() {
+			PrintStream ps = null;
+			try {
+				ps = new PrintStream(socket.getOutputStream());
+				ps.write(message.getBytes("UTF-8"));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		}
+		
+	}
+	
+	//接收消息的线程
+	class ReceiveThread implements Runnable {
+		
+		@Override
+		public void run() {
+			InputStream is = null;
+			try {
+				is = socket.getInputStream();
+			} catch(IOException e) {
+				e.printStackTrace();
+				System.out.println("获取输入流出错！");
+			}
+			
+			byte[] buffer = new byte[MESSAGE_BUFFER_LENGTH];
+			
+			while(!socket.isClosed()) {
+				Arrays.fill(buffer, (byte)0);//初始化数组
+				try {
+					is.read(buffer);
+				} catch (IOException e) {
+					System.err.println("读取信息错误！");
+					e.printStackTrace();
+				}
+				try {
+					String message = new String(buffer, "UTF-8").trim();
+					System.out.println(message);
+					switch (message) {
+					case Message.CONNECT:
+						AudioStreamReciver asr = new AudioStreamReciver();
+						new Thread(asr).start();
+						String msg = new String("9999");//只需返回UDP端口
+						sendMessage(msg);
+						break;
+					case Message.START:
+						frame.setVisible(false);
+						frame2 = new DrawWavePanel();
+						frame2.setVisible(true);
+						break;
+					case Message.PAUSE:
+						break;
+					case Message.STOP:
+						break;
+					case Message.EXIT:
+						try {
+							socket.close();
+						} catch (IOException e) {
+							e.printStackTrace();
+							System.exit(0);//退出程序
+						}
+						System.out.print("socket已经关闭！");
+						System.exit(0);
+						break;
+					default:
+						System.out.println(message);
+						break;
+					}
+				} catch (UnsupportedEncodingException e) {
+					System.err.println("转换为字符串出错！");
+					e.printStackTrace();
+					break;
+				}
+			}
+		}
+		
+	};
+	
+	/**
+	 * 生成内容为message的二维码文件
+	 * @param message
+	 * @return 生成的二维码文件
+	 */
+	public static File makeQRCode(String message) {
+		Hashtable<EncodeHintType, String> hints = new Hashtable<EncodeHintType, String>();
+		hints.put(EncodeHintType.CHARACTER_SET, "utf-8");
+		BitMatrix matrix = null;
+		try {
+			matrix = new MultiFormatWriter().encode(message, BarcodeFormat.QR_CODE, QR_CODE_SIZE, QR_CODE_SIZE, hints);
+		} catch(WriterException e) {
+			e.printStackTrace();
+		}
+		
+		File file = new File("qr_code.png");
+		
+		try {
+			MatrixToImageWriter.writeToFile(matrix, "png", file);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return file;
+	}
+
+	public Socket getSocket() {
+		return socket;
+	}
+
+	public void setSocket(Socket socket) {
+		this.socket = socket;
+	}
+
+}

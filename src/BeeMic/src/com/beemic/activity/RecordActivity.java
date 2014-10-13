@@ -1,0 +1,109 @@
+package com.beemic.activity;
+
+import android.app.Activity;
+import android.app.Service;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+
+import com.beemic.R;
+import com.beemic.common.Session;
+import com.beemic.service.RecordService;
+import com.beemic.service.RecordService.MyBinder;
+
+/**
+ * 录音时的<code>Activity</code><br>
+ * 进入时直接启动录音的<code>Service</code>
+ * @author Leckie
+ * @version 2014-04-02
+ */
+public class RecordActivity extends Activity {
+	
+	private MyServiceConntion conn = new MyServiceConntion();
+	
+	private RecordService recordService;
+	
+	private Session session;
+	
+//	private Button startOrPause;
+	
+	private Button stop;
+	
+	/*
+	 *录音状态，进入时直接启动录音的Service
+	 * 0 暂停
+	 * 1 正在录音
+	 * 2 停止（返回连接页面） 
+	 */
+	private int recordStatus = 0;
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_record);
+		
+//		startOrPause = (Button)findViewById(R.id.bnt001);
+		stop = (Button)findViewById(R.id.bnt002);
+		
+		session = Session.getSession();
+		
+		Intent intent = new Intent();
+		intent.setAction("com.beemic.service.RECORD_SERVICE");
+		bindService(intent, conn, Service.BIND_AUTO_CREATE);
+		
+		/*startOrPause.setOnClickListener(new View.OnClickListener() {
+			*//**
+			 * 开始录音或暂停录音
+			 *//*
+			@Override
+			public void onClick(View v) {
+				if(0 == recordStatus) {
+					binder.play();
+					recordStatus = 1;
+				}
+				else {//1
+					binder.pause();
+					recordStatus = 0;
+				}
+			}
+		});*/
+		
+		stop.setOnClickListener(new View.OnClickListener() {
+			/**
+			 * 结束录音
+			 */
+			@Override
+			public void onClick(View v) {
+				recordStatus = 2;
+				Intent resultIntent = new Intent();
+				Bundle bundle = new Bundle();
+				bundle.putString("result", "stop");
+				//bundle.putParcelable("bitmap", barcode);
+				resultIntent.putExtras(bundle);
+				setResult(2, resultIntent);
+				Log.i("RecordActivity","STOP");
+				finish();
+			}
+		});
+	}
+	
+	class MyServiceConntion implements ServiceConnection {
+
+		@Override
+		public void onServiceConnected(ComponentName name, IBinder binder) {
+			recordService = ((MyBinder) binder).getService();
+		}
+
+		@Override
+		public void onServiceDisconnected(ComponentName name) {
+			//finish();//结束activity
+			recordService = null;
+		}
+	}
+}
+

@@ -1,0 +1,21 @@
+package com.leckie.gui;
+
+import javax.swing.JFrame;
+
+/**
+ * 
+ * @author Leckie
+ * @date 2014-10-9
+ */
+public class MainJFrame extends JFrame {
+
+	private static final long serialVersionUID = 1L;
+
+	public static void main(String[] args) {
+		MainJFrame mjf = new MainJFrame();
+		mjf.setSize(600,400);
+		mjf.setLocationRelativeTo(null);
+		mjf.setVisible(true);
+	}
+
+}

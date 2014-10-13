@@ -1,0 +1,176 @@
+package com.beemic.service;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import android.app.Service;
+import android.content.Intent;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+import android.os.Binder;
+import android.os.Environment;
+import android.os.IBinder;
+import android.util.Log;
+
+import com.beemic.common.Session;
+import com.beemic.util.Pcm2WaveUtil;
+
+/**
+ * 管理会话状态的<code>Service</code>
+ * 
+ * @author Kevin
+ * @version 2014-04-03
+ */
+public class RecordService extends Service {
+
+	private final static int BUFFER_SIZE = 1024;
+
+	private Session session;
+
+	private MyBinder binder = new MyBinder();
+
+	private AudioRecord audioRecord = null;
+
+	private final static int FREQUENCY = 11025;
+
+	byte[] buffer;
+
+	private boolean isRecording = false;// 是否正在录音
+
+	@Override
+	public IBinder onBind(Intent intent) {
+		return binder;
+	}
+
+	@Override
+	public void onCreate() {
+		super.onCreate();
+		session = Session.getSession();
+		init();// 初始化
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				Log.i("INFO", "start recording!");
+				record();
+			}
+		}).start();
+	}
+
+	@SuppressWarnings("deprecation")
+	public void init() {
+		int bufferSize = AudioRecord.getMinBufferSize(FREQUENCY,
+				AudioFormat.CHANNEL_CONFIGURATION_MONO,
+				AudioFormat.ENCODING_PCM_16BIT);
+		Log.i("bufferSize", bufferSize + "");
+		audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, FREQUENCY,
+				AudioFormat.CHANNEL_CONFIGURATION_MONO,
+				AudioFormat.ENCODING_PCM_16BIT, bufferSize);
+		buffer = new byte[bufferSize];
+		File file = new File(Environment.getExternalStorageDirectory(),
+				"BeeMic");
+		if (!file.exists()) {
+			file.mkdir();
+		}
+	}
+
+	/**
+	 * 录音的方法
+	 */
+	public void record() {
+		DatagramSocket ds = null;
+		DatagramPacket packet = null;
+		SimpleDateFormat sfd = new SimpleDateFormat("yyyyMMddHHmmss");
+		Date now = new Date(System.currentTimeMillis());
+		String dateStr = sfd.format(now);
+		File file = new File(Environment.getExternalStorageDirectory()
+				.getAbsolutePath() + "/BeeMic/" + dateStr + ".pcm");
+		if (file.exists())
+			file.delete();// 如果文件已经存在，则删除，加了时间戳一般不可能
+		try {
+			file.createNewFile();// 创建文件
+		} catch (IOException e2) {
+			e2.printStackTrace();
+		}
+		FileOutputStream fos = null;
+		try {
+			fos = new FileOutputStream(file);
+			Log.i("RecordService", file.getAbsolutePath());
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		}
+		try {
+			ds = new DatagramSocket();
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+		try {
+			packet = new DatagramPacket(buffer, buffer.length,
+					InetAddress.getByName(session.getIp()),
+					session.getUdpPort());// 绑定
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
+		audioRecord.startRecording();
+		isRecording = true;
+		try {
+			while (isRecording) {
+				audioRecord.read(buffer, 0, buffer.length);
+				ds.send(packet);
+				fos.write(buffer);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public int onStartCommand(Intent intent, int flags, int startId) {
+		return super.onStartCommand(intent, flags, startId);
+	}
+
+	@Override
+	public boolean onUnbind(Intent intent) {
+		return true;
+	}
+
+	@Override
+	public void onDestroy() {
+		isRecording = false;// 录音结束
+		Log.i("RecordService", "Service is finished!");
+		super.onDestroy();
+	}
+
+	public void play() {
+
+	}
+
+	public void pause() {
+
+	}
+
+	public void stop() {
+
+	}
+
+	public class MyBinder extends Binder {
+		public RecordService getService() {
+			return RecordService.this;
+			
+		}
+	}
+}
+
+class Test {
+	Log.i("Tag", "asdf");
+}

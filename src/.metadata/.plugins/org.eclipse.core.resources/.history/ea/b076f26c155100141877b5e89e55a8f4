@@ -1,0 +1,70 @@
+package com.beemic.main;
+
+import java.io.IOException;
+import java.net.ServerSocket;
+
+import com.beemic.common.Session;
+import com.beemic.gui.ConnectJFrame;
+import com.beemic.gui.DrawWavePanel;
+import com.beemic.util.IpResolverUtil;
+
+/**
+ * 程序入口<br>
+ * @author Leckie
+ * @date 2014-10-11
+ */
+public class BeePlayer {
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		ConnectionManager cm = new ConnectionManager();
+		  ConnectJFrame connectFrame = null;
+		  DrawWavePanel playFrame = null;
+		
+		ServerSocket ss = null;
+		Session session = null;//唯一的会话信息的引用
+		ConnectionManager conn = new ConnectionManager();
+		try {
+			ss = new ServerSocket(60637, 10, IpResolverUtil.getPreferedLocalHost());
+		} catch (IOException e) {
+			System.err.println("创建ServerSocket失败！");
+			e.printStackTrace();
+			System.exit(0);
+		}
+		
+		StringBuffer sb = new StringBuffer(AUTH_CODE);
+		
+		sb.append("," + ss.getInetAddress().getHostAddress());//IP地址
+		sb.append("," + ss.getLocalPort());//端口号
+		
+		cm.connectFrame = new ConnectJFrame("请扫描下方的二维码来获得连接：", makeQRCode(sb.toString()));
+		cm.connectFrame.setVisible(true);
+		System.out.println(sb.toString());
+		
+		try {
+			conn.setSocket(ss.accept());
+			System.out.println("连接成功！");
+		} catch (IOException e) {
+			System.err.println("连接失败！");
+			e.printStackTrace();
+		}
+		
+		
+		session = Session.getSession();//获得会话信息
+		session.setAlive(true);
+		session.setIp(conn.getSocket().getInetAddress().getHostAddress());
+		session.setTcpPort(conn.getSocket().getPort());
+		
+		//conn.sendMessage(Message.CONNECT_CONFIRM);//发送确认消息
+		conn.receiveMessage();//监听消息
+		
+		try {
+			ss.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+}

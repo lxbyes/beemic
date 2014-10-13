@@ -1,0 +1,14 @@
+#Fat Jar Configuration File
+#Thu Oct 09 11:32:07 CST 2014
+onejar.license.required=true
+manifest.classpath=
+manifest.removesigners=true
+onejar.checkbox=false
+jarname=GUITest_fat.jar
+manifest.mergeall=true
+manifest.mainclass=com.leckie.gui.MainJFrame
+manifest.file=<createnew>
+jarname.isextern=false
+onejar.expand=
+excludes=
+includes=

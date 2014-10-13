@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">随麦</string>
+    <string name="action_settings">Settings</string>
+    <string name="connect_computer">Connect to computer!</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="menu_settings">Settings</string>
+    <string name="scan_text">将二维码放入框内, 即可自动扫描</string>
+	<string name="welcome">随麦1.0</string>
+    <string name="type2scan">点击扫描</string>
+    <string name="connwifi">连接Wifi</string>
+    <string name="startrecord">开始录音</string>
+    <string name="start">继续</string>
+    <string name="pause">暂停</string>
+    <string name="stop">结束</string>
+</resources>
